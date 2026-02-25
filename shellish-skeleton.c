@@ -6,6 +6,7 @@
 #include <sys/wait.h>
 #include <termios.h> // termios, TCSANOW, ECHO, ICANON
 #include <unistd.h>
+#include <fcntl.h>
 const char *sysname = "shellish";
 
 enum return_codes {
@@ -336,6 +337,37 @@ int process_command(struct command_t *command) {
 
     // TODO: do your own exec with path resolving using execv()
     // do so by replacing the execvp call below
+    
+
+    // Handling the input when the redirects[0] is not empty 	  
+    if(command->redirects[0]){
+    	int fd = open(command->redirects[0], O_RDONLY);
+	if(fd < 0){
+		perror("File opening error");
+		exit(1);
+	}
+	dup2(fd, STDIN_FILENO);
+	close(fd);
+    }
+    if(command->redirects[1]){
+	int fd = open(command->redirects[1], O_WRONLY | O_CREAT | O_TRUNC);
+	if(fd < 0){
+		perror("File opening error");
+                exit(1);
+	}
+	dup2(fd, STDOUT_FILENO);
+	close(fd);
+    }
+    if(command->redirects[2]){
+	int fd = open(command->redirects[2], O_WRONLY | O_CREAT | O_APPEND);
+        if(fd < 0){
+                perror("File opening error");
+                exit(1);
+        }
+        dup2(fd, STDOUT_FILENO);
+        close(fd);
+    }
+
     char *path = getenv("PATH");
     char *cur_path = strtok(path, ":");
 
