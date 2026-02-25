@@ -307,6 +307,29 @@ int prompt(struct command_t *command) {
   return SUCCESS;
 }
 
+int recursive_pipe(struct command_t *command){
+  if(!command->next){
+    execvp(command->name, command->args);
+    return SUCCESS;  
+  }
+  int fd[2];
+
+  pipe(fd);
+  pid_t pid = fork();
+  if(pid == 0){
+    dup2(fd[1], STDOUT_FILENO);
+    close(fd[0]);
+    close(fd[1]);
+    execvp(command->name, command->args);
+  }else{
+    dup2(fd[0], STDIN_FILENO);
+    close(fd[0]);
+    close(fd[1]);    
+    recursive_pipe(command->next);
+    wait(0);
+  }
+}
+
 int process_command(struct command_t *command) {
   int r;
   if (strcmp(command->name, "") == 0)
@@ -323,7 +346,16 @@ int process_command(struct command_t *command) {
       return SUCCESS;
     }
   }
-
+  if(command->next){
+    pid_t pid = fork();
+    if(pid == 0){
+      recursive_pipe(command);
+      return SUCCESS;
+    }else{
+       wait(0);
+       return SUCCESS;
+    }
+  }
   pid_t pid = fork();
   if (pid == 0) // child
   {
@@ -350,7 +382,7 @@ int process_command(struct command_t *command) {
 	close(fd);
     }
     if(command->redirects[1]){
-	int fd = open(command->redirects[1], O_WRONLY | O_CREAT | O_TRUNC);
+	int fd = open(command->redirects[1], O_WRONLY | O_CREAT | O_TRUNC, 0644);
 	if(fd < 0){
 		perror("File opening error");
                 exit(1);
@@ -359,7 +391,7 @@ int process_command(struct command_t *command) {
 	close(fd);
     }
     if(command->redirects[2]){
-	int fd = open(command->redirects[2], O_WRONLY | O_CREAT | O_APPEND);
+	int fd = open(command->redirects[2], O_WRONLY | O_CREAT | O_APPEND, 0644);
         if(fd < 0){
                 perror("File opening error");
                 exit(1);
