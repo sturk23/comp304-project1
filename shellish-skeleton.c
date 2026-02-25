@@ -340,7 +340,6 @@ int process_command(struct command_t *command) {
     char *cur_path = strtok(path, ":");
 
     while(cur_path){
-	printf("%s\n",cur_path);
 	int len_command = strlen(command->name);
 	int len_path = strlen(cur_path);
 	char *full = malloc(len_command + len_path + 2);
@@ -357,6 +356,9 @@ int process_command(struct command_t *command) {
     exit(127);
   } else {
     // TODO: implement background processes here
+    if(command->background == true){
+    	return SUCCESS;
+    }
     wait(0); // wait for child process to finish
     return SUCCESS;
   }
