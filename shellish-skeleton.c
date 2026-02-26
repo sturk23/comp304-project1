@@ -307,28 +307,28 @@ int prompt(struct command_t *command) {
   return SUCCESS;
 }
 
-int recursive_pipe(struct command_t *command){
-  if(!command->next){
-    execvp(command->name, command->args);
-    return SUCCESS;  
-  }
-  int fd[2];
+// int recursive_pipe(struct command_t *command){
+//   if(!command->next){
+//     execvp(command->name, command->args);
+//     return SUCCESS;  
+//   }
+//   int fd[2];
 
-  pipe(fd);
-  pid_t pid = fork();
-  if(pid == 0){
-    dup2(fd[1], STDOUT_FILENO);
-    close(fd[0]);
-    close(fd[1]);
-    execvp(command->name, command->args);
-  }else{
-    dup2(fd[0], STDIN_FILENO);
-    close(fd[0]);
-    close(fd[1]);    
-    recursive_pipe(command->next);
-    wait(0);
-  }
-}
+//   pipe(fd);
+//   pid_t pid = fork();
+//   if(pid == 0){
+//     dup2(fd[1], STDOUT_FILENO);
+//     close(fd[0]);
+//     close(fd[1]);
+//     execvp(command->name, command->args);
+//   }else{
+//     dup2(fd[0], STDIN_FILENO);
+//     close(fd[0]);
+//     close(fd[1]);    
+//     recursive_pipe(command->next);
+//     wait(0);
+//   }
+// }
 
 int process_command(struct command_t *command) {
   int r;
@@ -346,19 +346,41 @@ int process_command(struct command_t *command) {
       return SUCCESS;
     }
   }
-  if(command->next){
-    pid_t pid = fork();
-    if(pid == 0){
-      recursive_pipe(command);
-      return SUCCESS;
-    }else{
-       wait(0);
-       return SUCCESS;
-    }
-  }
+  // if(command->next){
+  //   pid_t pid = fork();
+  //   if(pid == 0){
+  //     recursive_pipe(command);
+  //     return SUCCESS;
+  //   }else{
+  //      wait(0);
+  //      return SUCCESS;
+  //   }
+  // }
   pid_t pid = fork();
   if (pid == 0) // child
   {
+
+
+    while (command->next)
+    {
+      int fd[2];
+
+      pipe(fd);
+      pid_t pid = fork();
+      if(pid == 0){
+        dup2(fd[1], STDOUT_FILENO);
+        close(fd[0]);
+        close(fd[1]);
+        break;
+      }else{
+        dup2(fd[0], STDIN_FILENO);
+        close(fd[0]);
+        close(fd[1]);    
+        wait(0);
+        command = command->next;
+      }
+    }
+    
     /// This shows how to do exec with environ (but is not available on MacOs)
     // extern char** environ; // environment variables
     // execvpe(command->name, command->args, environ); // exec+args+path+environ
@@ -374,27 +396,27 @@ int process_command(struct command_t *command) {
     // Handling the input when the redirects[0] is not empty 	  
     if(command->redirects[0]){
     	int fd = open(command->redirects[0], O_RDONLY);
-	if(fd < 0){
-		perror("File opening error");
-		exit(1);
-	}
-	dup2(fd, STDIN_FILENO);
-	close(fd);
+      if(fd < 0){
+        perror("File opening error");
+        exit(1);
+      }
+      dup2(fd, STDIN_FILENO);
+      close(fd);
     }
     if(command->redirects[1]){
-	int fd = open(command->redirects[1], O_WRONLY | O_CREAT | O_TRUNC, 0644);
-	if(fd < 0){
-		perror("File opening error");
-                exit(1);
-	}
-	dup2(fd, STDOUT_FILENO);
-	close(fd);
+      int fd = open(command->redirects[1], O_WRONLY | O_CREAT | O_TRUNC, 0644);
+      if(fd < 0){
+        perror("File opening error");
+        exit(1);
+      }
+      dup2(fd, STDOUT_FILENO);
+      close(fd);
     }
     if(command->redirects[2]){
-	int fd = open(command->redirects[2], O_WRONLY | O_CREAT | O_APPEND, 0644);
+	      int fd = open(command->redirects[2], O_WRONLY | O_CREAT | O_APPEND, 0644);
         if(fd < 0){
-                perror("File opening error");
-                exit(1);
+          perror("File opening error");
+          exit(1);
         }
         dup2(fd, STDOUT_FILENO);
         close(fd);
@@ -404,15 +426,15 @@ int process_command(struct command_t *command) {
     char *cur_path = strtok(path, ":");
 
     while(cur_path){
-	int len_command = strlen(command->name);
-	int len_path = strlen(cur_path);
-	char *full = malloc(len_command + len_path + 2);
-	strcpy(full, cur_path);
-	strcat(full, "/");
-	strcat(full, command->name);
-
-	execv(full, command->args);
-	cur_path = strtok(NULL, ":");
+      int len_command = strlen(command->name);
+      int len_path = strlen(cur_path);
+      char *full = malloc(len_command + len_path + 2);
+      strcpy(full, cur_path);
+      strcat(full, "/");
+      strcat(full, command->name);
+      
+      execv(full, command->args);
+      cur_path = strtok(NULL, ":");
     }
 
     //execvp(command->name, command->args); // exec+args+path
