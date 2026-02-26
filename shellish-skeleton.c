@@ -330,6 +330,67 @@ int prompt(struct command_t *command) {
 //   }
 // }
 
+  int custom_cut(struct command_t *command){
+    char *default_delimeter = "\t";
+    char *indices = "";
+    char com[1000];
+    int size = 50;
+
+    int i = 0;
+
+    while(i < command->arg_count - 1){
+      if(strcmp(command->args[i], "-d" ) == 0 || strcmp(command->args[i], "--delimiter") == 0){
+        default_delimeter = command->args[i+1];
+      }else if(strcmp(command->args[i], "-f") == 0){
+        indices = command->args[i+1];
+      }
+      i++;
+    }
+
+    int *ind = malloc(sizeof(int) * strlen(indices));
+
+    char *copy = strdup(indices);
+
+    char *c = strtok(copy, ",");
+    int j = 0;
+    while (c)
+    {
+      ind[j] = atoi(c);
+      j++;
+      c  = strtok(NULL, ",");
+    }
+    int len_ind = j;
+    
+    while(fgets(com, sizeof(com), stdin)){
+      char **parts = malloc(strlen(com) * 8);
+      char *cur = strtok(com,default_delimeter);
+      int i = 0;
+      while(cur){
+        parts[i] = cur;
+        i++;
+        cur = strtok(NULL, default_delimeter);
+      }
+      int m = 0;
+      int j = 0;
+      while(j < len_ind){
+        if(m == 0){
+          printf("%s", parts[ind[j] -1]);
+          m++;
+        }else{
+          printf("%s", default_delimeter);
+          printf("%s", parts[ind[j] -1]);
+        }
+        j++;
+      }
+      
+      printf("\n");
+      
+    }
+    
+
+    return 0;
+  }
+
 int process_command(struct command_t *command) {
   int r;
   if (strcmp(command->name, "") == 0)
@@ -360,7 +421,7 @@ int process_command(struct command_t *command) {
   if (pid == 0) // child
   {
 
-
+    // piping the processes and breaking the loop so the process continues to the custom exec logic in the child 
     while (command->next)
     {
       int fd[2];
@@ -413,13 +474,18 @@ int process_command(struct command_t *command) {
       close(fd);
     }
     if(command->redirects[2]){
-	      int fd = open(command->redirects[2], O_WRONLY | O_CREAT | O_APPEND, 0644);
-        if(fd < 0){
-          perror("File opening error");
-          exit(1);
-        }
-        dup2(fd, STDOUT_FILENO);
-        close(fd);
+      int fd = open(command->redirects[2], O_WRONLY | O_CREAT | O_APPEND, 0644);
+      if(fd < 0){
+        perror("File opening error");
+        exit(1);
+      }
+      dup2(fd, STDOUT_FILENO);
+      close(fd);
+    }
+
+    if(strcmp(command->name, "cut") == 0){
+      custom_cut(command);
+      exit(0);
     }
 
     char *path = getenv("PATH");
@@ -440,6 +506,7 @@ int process_command(struct command_t *command) {
     //execvp(command->name, command->args); // exec+args+path
     printf("-%s: %s: command not found\n", sysname, command->name);
     exit(127);
+
   } else {
     // TODO: implement background processes here
     if(command->background == true){
