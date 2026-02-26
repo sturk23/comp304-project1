@@ -330,66 +330,214 @@ int prompt(struct command_t *command) {
 //   }
 // }
 
-  int custom_cut(struct command_t *command){
-    char *default_delimeter = "\t";
-    char *indices = "";
-    char com[1000];
-    int size = 50;
+int custom_cut(struct command_t *command){
+  char *default_delimeter = "\t";
+  char *indices = "";
+  char com[1000];
+  int size = 50;
 
-    int i = 0;
+  int i = 0;
 
-    while(i < command->arg_count - 1){
-      if(strcmp(command->args[i], "-d" ) == 0 || strcmp(command->args[i], "--delimiter") == 0){
-        default_delimeter = command->args[i+1];
-      }else if(strcmp(command->args[i], "-f") == 0){
-        indices = command->args[i+1];
-      }
-      i++;
+  while(i < command->arg_count - 1){
+    if(strcmp(command->args[i], "-d" ) == 0 || strcmp(command->args[i], "--delimiter") == 0){
+      default_delimeter = command->args[i+1];
+    }else if(strcmp(command->args[i], "-f") == 0){
+      indices = command->args[i+1];
     }
-
-    int *ind = malloc(sizeof(int) * strlen(indices));
-
-    char *copy = strdup(indices);
-
-    char *c = strtok(copy, ",");
-    int j = 0;
-    while (c)
-    {
-      ind[j] = atoi(c);
-      j++;
-      c  = strtok(NULL, ",");
-    }
-    int len_ind = j;
-    
-    while(fgets(com, sizeof(com), stdin)){
-      char **parts = malloc(strlen(com) * 8);
-      char *cur = strtok(com,default_delimeter);
-      int i = 0;
-      while(cur){
-        parts[i] = cur;
-        i++;
-        cur = strtok(NULL, default_delimeter);
-      }
-      int m = 0;
-      int j = 0;
-      while(j < len_ind){
-        if(m == 0){
-          printf("%s", parts[ind[j] -1]);
-          m++;
-        }else{
-          printf("%s", default_delimeter);
-          printf("%s", parts[ind[j] -1]);
-        }
-        j++;
-      }
-      
-      printf("\n");
-      
-    }
-    
-
-    return 0;
+    i++;
   }
+
+  int *ind = malloc(sizeof(int) * strlen(indices));
+
+  char *copy = strdup(indices);
+
+  char *c = strtok(copy, ",");
+  int j = 0;
+  while (c)
+  {
+    ind[j] = atoi(c);
+    j++;
+    c  = strtok(NULL, ",");
+  }
+  int len_ind = j;
+  
+  while(fgets(com, sizeof(com), stdin)){
+    char **parts = malloc(strlen(com) * 8);
+    char *cur = strtok(com,default_delimeter);
+    int i = 0;
+    while(cur){
+      parts[i] = cur;
+      i++;
+      cur = strtok(NULL, default_delimeter);
+    }
+    int m = 0;
+    int j = 0;
+    while(j < len_ind){
+      if(m == 0){
+        printf("%s", parts[ind[j] -1]);
+        m++;
+      }else{
+        printf("%s", default_delimeter);
+        printf("%s", parts[ind[j] -1]);
+      }
+      j++;
+    }
+    
+    printf("\n");
+    
+  }
+  
+
+  return 0;
+}
+
+double calc_sum(double *nums, int size){
+  int i = 0;
+  double sum = 0;
+  while (i < size)
+  {
+    sum += nums[i];
+    i++;
+  }
+  return sum;
+}
+
+double find_min(double *nums, int size){
+  double min = nums[0];
+  int i = 0;
+  while(i < size){
+    if (nums[i] < min)
+    {
+      min = nums[i]; 
+    }
+    
+    i++;
+  }
+
+  return min;
+}
+
+double find_max(double *nums, int size){
+  double max = nums[0];
+  int i = 0;
+  while(i < size){
+    if (nums[i] > max)
+    {
+      max = nums[i]; 
+    }
+    
+    i++;
+  }
+
+  return max;
+}
+
+int comparator(const void *p, const void *q) { 
+  double i = *(double *)p;
+  double j = *(double *)q;
+  if (i > j)
+  {
+    return 1;
+  }else if(j > i){
+    return -1;
+  }
+  return 0;
+}
+
+int custom_nums(struct command_t *command){
+  char *delim = ",";
+  int print_sum = 0;
+  int print_avg = 0;
+  int print_sorted = 0;
+  int print_min = 0;
+  int print_max = 0;
+  int print_count = 0;
+
+  char line[1000];
+
+  
+  int i = 0;
+
+  while(i < command->arg_count - 1){
+    if(strcmp(command->args[i], "-d" ) == 0 || strcmp(command->args[i], "--delimiter") == 0){
+      delim = command->args[i+1];
+    }else if(strcmp(command->args[i], "--sum") == 0){
+      print_sum = 1;
+    }else if(strcmp(command->args[i], "--avg") == 0){
+      print_avg = 1;
+    }else if(strcmp(command->args[i], "--min") == 0){
+      print_min = 1;
+    }else if(strcmp(command->args[i], "--max") == 0){
+      print_max = 1;
+    }else if(strcmp(command->args[i], "--sort") == 0){
+      print_sorted = 1;
+    }else if(strcmp(command->args[i], "--count") == 0){
+      print_count = 1;
+    }
+    i++;
+  }
+  
+  while(fgets(line, sizeof(line), stdin)){
+    double *nums = malloc(sizeof(double) * strlen(line));
+    char *word = strtok(line, " ");
+    int i = 0;
+    while(word)
+    {
+      double cur_num = atof(word);
+      if (cur_num || strcmp(word, "0") == 0)
+      {
+        nums[i] = cur_num;
+        i++;
+      }
+      word = strtok(NULL, " ");
+    }
+
+    if (print_sorted)
+    {
+      qsort(nums, i, sizeof(double), comparator);
+    }
+
+    //printing the numbers
+    int j = 0;
+    while(j < i){
+      if(j != 0){
+        printf("%s", delim);
+      }
+      printf("%.2f", nums[j]);
+      j++;
+    }
+    printf("\n");
+    
+    if (print_sum)
+    {
+      double sum = calc_sum(nums, i);
+      printf("Sum: %.2f\n", sum);
+    }
+    if(print_min){
+      double min = find_min(nums, i);
+      printf("Min: %.2f\n", min);
+    }
+    if(print_max){
+      double max = find_max(nums, i);
+      printf("Max: %.2f\n", max);
+    }
+    if(print_count){
+      printf("Count: %d\n", i);
+    }
+    if (print_avg)
+    {
+      double average = calc_sum(nums, i) / i;
+      printf("Average: %.2f\n", average);
+    }
+    
+    
+    free(nums);
+  }
+
+
+
+  return 0;
+}
 
 int process_command(struct command_t *command) {
   int r;
@@ -485,6 +633,11 @@ int process_command(struct command_t *command) {
 
     if(strcmp(command->name, "cut") == 0){
       custom_cut(command);
+      exit(0);
+    }
+
+    if(strcmp(command->name, "num") == 0){
+      custom_nums(command);
       exit(0);
     }
 
