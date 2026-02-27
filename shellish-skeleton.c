@@ -343,7 +343,7 @@ int custom_cut(struct command_t *command){
   while(i < command->arg_count - 1){
     if(strcmp(command->args[i], "-d" ) == 0 || strcmp(command->args[i], "--delimiter") == 0){
       default_delimeter = command->args[i+1];
-    }else if(strcmp(command->args[i], "-f") == 0){
+    }else if(strcmp(command->args[i], "-f") == 0 || strcmp(command->args[i], "--field") == 0){
       indices = command->args[i+1];
     }
     i++;
@@ -572,7 +572,7 @@ int chatroom(struct command_t *command){
   }else{
     while(true){
       DIR *d = opendir(dir);
-      printf("[%s] %s >", room, username);
+      printf("[%s] %s > ", room, username);
       
       fgets(write_buffer,sizeof(write_buffer), stdin);
       char *full_line = malloc(strlen(write_buffer) + strlen(room) + strlen(username) + 6);
@@ -601,8 +601,10 @@ int chatroom(struct command_t *command){
           }else{
 
           }
+          free(fifo_path);
       }
       closedir(d);
+      free(full_line);
     }
 
   }
