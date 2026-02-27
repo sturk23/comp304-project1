@@ -7,6 +7,8 @@
 #include <termios.h> // termios, TCSANOW, ECHO, ICANON
 #include <unistd.h>
 #include <fcntl.h>
+#include <sys/stat.h>
+#include <dirent.h>
 const char *sysname = "shellish";
 
 enum return_codes {
@@ -425,7 +427,6 @@ double find_max(double *nums, int size){
     {
       max = nums[i]; 
     }
-    
     i++;
   }
 
@@ -533,10 +534,82 @@ int custom_nums(struct command_t *command){
     
     free(nums);
   }
-
-
-
   return 0;
+}
+
+int chatroom(struct command_t *command){
+  char *room = command->args[1];
+  char *username = command->args[2];
+
+  char *dir = malloc(15 + strlen(room));
+  strcpy(dir, "/tmp/chatroom-");
+  strcat(dir, room);
+
+  char *user = malloc(strlen(dir) + strlen(username) + 2);
+  strcpy(user, dir);
+  strcat(user, "/");
+  strcat(user, username);
+
+  mkdir(dir, 0777);
+  mkfifo(user, 0666);
+
+  printf("Welcome to %s!\n", room);
+
+  pid_t pid = fork();
+  int fd;
+  char read_buffer[1000];
+  char write_buffer[1000];  
+  
+  if(pid == 0){
+    while(true){
+      fd = open(user, O_RDWR);
+      int i = read(fd, read_buffer, sizeof(read_buffer) - 1);
+      read_buffer[i] = '\0';
+      printf("\33[2K\r%s[%s] %s > ", read_buffer, room, username);
+      fflush(stdout);
+      close(fd);
+    }
+  }else{
+    while(true){
+      DIR *d = opendir(dir);
+      printf("[%s] %s >", room, username);
+      
+      fgets(write_buffer,sizeof(write_buffer), stdin);
+      char *full_line = malloc(strlen(write_buffer) + strlen(room) + strlen(username) + 6);
+      strcpy(full_line, "[");
+      strcat(full_line, room);
+      strcat(full_line, "] ");
+      strcat(full_line, username);
+      strcat(full_line, ": ");
+      strcat(full_line, write_buffer);
+      struct dirent *other; 
+      while((other = readdir(d)) != NULL){
+          if(strcmp(other->d_name, ".") == 0 || strcmp(other->d_name, "..") == 0 || strcmp(other->d_name, username) == 0){
+            continue;
+          }
+          char *fifo_path = malloc(strlen(dir) + strlen(other->d_name) + 2);
+          strcpy(fifo_path, dir);
+          strcat(fifo_path, "/");
+          strcat(fifo_path, other->d_name);
+
+          pid_t p = fork();
+          if(p == 0){
+            fd = open(fifo_path, O_WRONLY | O_NONBLOCK);
+            write(fd, full_line, strlen(full_line) + 1);
+            close(fd);
+            exit(0);
+          }else{
+
+          }
+      }
+      closedir(d);
+    }
+
+  }
+  free(dir);
+  free(user);
+  return 0;
+  
 }
 
 int process_command(struct command_t *command) {
@@ -638,6 +711,11 @@ int process_command(struct command_t *command) {
 
     if(strcmp(command->name, "num") == 0){
       custom_nums(command);
+      exit(0);
+    }
+
+    if(strcmp(command->name, "chatroom") == 0){
+      chatroom(command);
       exit(0);
     }
 
